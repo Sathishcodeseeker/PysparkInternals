@@ -1,104 +1,204 @@
-🔥 Spark OOM & Failure Prevention – Senior Engineer Checklist
-Think of this as “pre-flight checks” before you run a Spark job.
+# 🔥 Spark OOM & Failure Prevention
 
-1️⃣ Before writing code: DATA SHAPE CHECK (most skipped)
-Ask these 5 questions:
-1. What is the largest table size?
-2. What is the join key cardinality?
-3. Is data skewed?
-4. Are there hot keys?
-5. What is the row width (number & size of columns)?
-👉 If you skip this, AQE won’t save you.
+### Senior Engineer Pre-Flight Checklist
 
-2️⃣ Partitioning checklist (most OOMs start here)
-Rule of thumb:
-Each task should process 100–300 MB max
-What YOU must do:
+> Think of this as **mandatory pre-flight checks** before running any Spark job.
 
+---
+
+## 1️⃣ Data Shape Check (Most Skipped — Most Critical)
+
+**Before writing a single line of code, answer these questions:**
+
+* What is the **largest table size**?
+* What is the **join key cardinality**?
+* Is there **data skew**?
+* Are there **hot keys**?
+* What is the **row width** (number and size of columns)?
+
+> ⚠️ If you skip this step, **AQE will not save you**.
+
+---
+
+## 2️⃣ Partitioning Checklist (Where Most OOMs Begin)
+
+### Rule of Thumb
+
+* **Each task should process 100–300 MB max**
+
+### Recommended
+
+```python
 df = df.repartition("join_key")
-Avoid:
+```
 
-df.repartition(1)   # 💀
+### 🚫 Avoid at All Costs
 
-Red flags:
+```python
+df.repartition(1)  # 💀 Guaranteed pain
+```
+
+### 🚩 Red Flags
+
 * Very few partitions
-* Very wide rows
-* groupBy on low-cardinality column
+* Extremely wide rows
+* `groupBy` on low-cardinality columns
 
-3️⃣ Join safety checklist (OOM factory)
-Always ask:
-* Which side is smaller?
-* Can it grow unexpectedly?
-Safe defaults:
+---
 
+## 3️⃣ Join Safety Checklist (OOM Factory)
+
+### Always Ask
+
+* Which side is **smaller**?
+* Can the smaller side **grow unexpectedly**?
+
+### Safe Default
+
+```python
 spark.conf.set("spark.sql.autoBroadcastJoinThreshold", "-1")
-Then explicitly:
+```
 
+### Explicit & Safe
+
+```python
 df_big.join(broadcast(df_small), "id")
-👉 You decide, not Spark.
+```
 
-4️⃣ Aggregation safety (silent killer)
-Dangerous:
+> 👉 **You decide the join strategy — not Spark.**
 
-df.groupBy("country").count()  # country = INDIA dominates
-Safer:
-* Use salting
-* Or increase shuffle partitions
+---
 
+## 4️⃣ Aggregation Safety (Silent Killer)
+
+### 🚫 Dangerous
+
+```python
+df.groupBy("country").count()  # INDIA dominates
+```
+
+### ✅ Safer Options
+
+* Use **salting**
+* Increase shuffle partitions
+
+```python
 spark.conf.set("spark.sql.shuffle.partitions", 400)
+```
 
-5️⃣ Cache discipline (this alone avoids many failures)
-Only cache if:
-✔ Data reused multiple times ✔ Data fits in memory
-NEVER:
+---
+
+## 5️⃣ Cache Discipline (Avoids Many Failures Alone)
+
+### Cache **Only If**
+
+* ✔ Data is reused multiple times
+* ✔ Data fits comfortably in memory
+
+### 🚫 NEVER
+
 * Cache raw large datasets
-* Cache before filter / select
+* Cache before `filter` / `select`
 
+### ✅ Correct Pattern
+
+```python
 df_filtered = df.filter(...).select(...)
 df_filtered.cache()
+```
 
-6️⃣ UDF / Pandas UDF rules (OOM hotspot)
-Avoid if possible:
-* Pandas UDF with large partitions
+---
+
+## 6️⃣ UDF & Pandas UDF Rules (High-Risk Zone)
+
+### Avoid When Possible
+
+* Pandas UDFs on large partitions
 * Python object-heavy logic
-If needed:
+
+### If You Must
+
 * Reduce partition size
-* Use Arrow wisely
+* Use Arrow **intentionally**, not blindly
 
-7️⃣ Driver safety (very common mistake)
-NEVER on large data:
+---
 
+## 7️⃣ Driver Safety (Very Common Mistake)
+
+### 🚫 NEVER on Large Data
+
+```python
 df.collect()
 df.toPandas()
-Instead:
+```
 
+### ✅ Safe Alternative
+
+```python
 df.limit(1000).toPandas()
+```
 
-8️⃣ Spark UI: how to find root cause (VERY IMPORTANT)
-When job fails:
-1. Go to Stages
-2. Find stage with:
-    * One task much slower
-    * Huge input size
-3. Check:
-    * Shuffle Read / Write
-    * Spill (memory → disk)
-👉 That tells you exactly what went wrong.
+---
 
-9️⃣ AQE: how to use it correctly
-Let AQE handle:
-✔ Minor skew ✔ Partition coalescing ✔ Join switching
-YOU handle:
-❌ Extreme skew ❌ Bad partitioning ❌ Cache misuse ❌ UDF memory
+## 8️⃣ Spark UI: How to Find the Real Root Cause
 
-🔑 Golden rules (print these mentally)
-• Shuffles cause stages • Stages cause tasks • Tasks consume memory • One bad task can kill a job
+### When a Job Fails
 
-🧠 Senior engineer mindset shift (important)
-Junior thinks:
-“Spark failed”
-Senior thinks:
-“Which task processed too much data?”
+1. Open **Spark UI**
+2. Go to **Stages**
+3. Identify the stage with:
 
-📌 Final one-line summary (lock this in)
-AQE optimizes plans, but data engineers design safety.
+   * One task much slower than others
+   * Extremely large input size
+
+### Inspect
+
+* Shuffle Read / Write
+* Spill (Memory → Disk)
+
+> 👉 This tells you **exactly** what went wrong.
+
+---
+
+## 9️⃣ AQE: Use It Correctly
+
+### Let AQE Handle
+
+* ✔ Minor skew
+* ✔ Partition coalescing
+* ✔ Join switching
+
+### YOU Must Handle
+
+* ❌ Extreme skew
+* ❌ Bad partitioning
+* ❌ Cache misuse
+* ❌ UDF memory abuse
+
+---
+
+## 🔑 Golden Rules (Burn These In)
+
+* Shuffles create **stages**
+* Stages create **tasks**
+* Tasks consume **memory**
+* **One bad task can kill the entire job**
+
+---
+
+## 🧠 Mindset Shift
+
+**Junior Engineer thinks:**
+
+> “Spark failed.”
+
+**Senior Engineer thinks:**
+
+> “Which task processed too much data?”
+
+---
+
+## 📌 Final Takeaway
+
+> **AQE optimizes execution plans.
+> Data engineers design safety.**
