@@ -1,8 +1,5 @@
 1 - Spark Internals
 
-
-Great, Spark Internals is exactly the right next step 👍 I’ll explain this slowly, from first principles, and in a way that will help you debug performance issues in Databricks / PySpark.
-I’ll structure this as:
 1. Big picture: why plans exist
 2. Logical Plan – what Spark wants to do
 3. Physical Plan – how Spark decides to do it
