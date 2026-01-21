@@ -1,4 +1,3 @@
----
 
 ## Step 0 — Base case (common knowledge)
 
