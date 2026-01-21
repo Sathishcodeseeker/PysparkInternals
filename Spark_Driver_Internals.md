@@ -26,18 +26,6 @@ This control-plane overload is what we call **Driver Bottleneck**.
 
 ---
 
-### Typical symptom at this base level
-
-* Executors are idle or underutilized
-* Driver CPU or memory spikes
-* Job stuck in:
-
-  * `Stage submitted`
-  * `Task scheduling`
-  * `Collecting results`
-
----
-
 ## Step 1 — **Where exactly Spark Driver becomes a bottleneck (internal view)**
 
 Now we move **one level deeper** than the base case.
