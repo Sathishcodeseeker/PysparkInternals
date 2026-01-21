@@ -232,8 +232,4 @@ This answer shows **real-world understanding**.
 
 > Backpressure is not optional in reliable data pipelines — if the engine doesn’t provide it, **you must design it yourself**.
 
-If you say **“Okay”**, next we can go into:
 
-* How to **simulate backpressure failures**
-* How to **detect backpressure early**
-* How to **enforce backpressure using Databricks Jobs + control plane**
